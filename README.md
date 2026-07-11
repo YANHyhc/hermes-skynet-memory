@@ -241,56 +241,162 @@
 241|
 242|---
 243|
-244|## 📊 五维评分 / Five-Dimension Score
+244|## 🧠 真实创新 / True Innovation
 245|
-246|| 维度 / Dimension | 评分 / Score | 含义 / Meaning |
-247||:----------------|:-----------:|:---------------|
-248|| 逻辑自洽闭环 / Logical consistency | 🟢 99% | 三层单向依赖，无环 / Uni-directional, no cycles |
-249|| 可行有效 / Feasibility | 🟢 96% | 4脚本+3cron全部可运行 / All scripts + crons runnable |
-250|| 效率提升 / Efficiency | 🟢 92% | 省60%噪声，断链率-90% / -60% noise, -90% gaps |
-251|| 记忆断链解决 / Gap resolution | 🟢 95% | 三层覆盖所有断链场景 / Three tiers cover all gaps |
-252|| 死循环风险 / Loop risk | 🟢 99.5% | 无自引/振荡/无限递归 / No self-reference / oscillation |
+246|> 以下是对标所有同类产品后，天网体系中**社区未见的原创设计**。如果你在其他项目中见过这些设计，请告诉我们——我们追求的不是「不重复造轮子」，而是确保每个轮子都是为这事专门设计的。
+247|
+248|### 创新一：被动注入式记忆（业界首创）
+249|
+250|**所有同类产品的范式：** 主动查询。Agent 说"我想查记忆" → 调记忆 API → 检索 → 算分 → 再回答。就像一个人每次说话前先手动翻自己的日记。
+251|
+252|**天网的范式：** 被动注入。cron 后台自动维护索引 → 用户提到关键词 → triggers 自动匹配 → micro-skill 自动加载到上下文 → Agent "本来就知道"。就像人的海马体自动工作，前额叶不需要知道记忆系统存在。
 253|
-254|---
-255|
-256|## 🔧 维护 / Maintenance
-257|
-258|### 日常操作 / Daily Operations
-259|
-260|```bash
-261|# 列出所有条目 / List all entries
-262|python ~/.hermes/scripts/memory_index.py --list
-263|
-264|# 手动触发校准 / Manual calibration
-265|python ~/.hermes/scripts/memory_calibrate.py
+254|```
+255|竞品：  Agent → "我需要查记忆" → API → 检索 → 回答
+256|天网：  user提到"关键词" → skill auto-load → Agent已经知道
+257|```
+258|
+259|**为什么社区没人这么做？** 因为这套机制依赖 Agent 框架的原生 skill/trigger 系统——Hermes Agent 有，其他框架没有。我们不是在「造记忆系统」而是在把 Agent 框架的 skill 机制「重新解释为记忆」。
+260|
+261|### 创新二：Skill 即记忆——零额外基础设施
+262|
+263|竞品的记忆系统 = 一个完整的新基础设施（向量数据库 + 记忆服务器 + API 层）。天网 = **零额外基础设施**。
+264|
+265|每个 assoc_index 条目不存储在专用记忆数据库里，而是通过 `memory_skillgen.py` 自动生成一个**Hermes skill 目录条目**——skill 的 SKILL.md 自然成为记忆载体，triggers 自然成为检索机制，Hermes 的 skill 加载器自然成为记忆注入引擎。
 266|
-267|# 查看当前专注 / View current focus
-268|cat ~/.hermes/memories/MEMORY.md | head -1
-269|```
-270|
-271|### 归档 / Archiving
-272|
-273|>365天的条目自动移入 `baige/cache/assoc_index_archive.json`。自然衰减：30天无反馈 → weight×0.95。  \
-274|Entries >365 days auto-move to `baige/cache/assoc_index_archive.json`. Decay: no feedback for 30 days → weight × 0.95.
+267|```
+268|竞品记忆系统：  数据 → 向量DB → 索引 → API → Agent能查
+269|天网记忆系统：  数据 → assoc_index → cron → skill → Agent本来就知道
+270|```
+271|
+272|**为什么是原创？** 因为我们没有「构建记忆系统」——我们「发现」Hermes Agent 的 skill 机制本身就是完美的记忆载体，只需要把 cron 产生的数据格式对齐 skill 格式。
+273|
+274|### 创新三：动态专注窗口，而非固定上下文
 275|
-276|---
+276|所有竞品的上下文管理策略是固定的：要么全部记忆平等（Mem0），要么用户手动设定优先级（部分 RAG 方案）。天网引入了**专注窗口**——一个自动迁移的焦点头部。
 277|
-278|## 📜 许可证 / License
+278|每30分钟，cron 读取 focus_tracker（统计最近对话中被提到最多次的主题）→ 按频率排序 → 替换 MEMORY.md 顶部 2-3 行的专注内容。专注随用户关注自然迁移。
 279|
-280|MIT License — 自由使用、修改、分发 / Free to use, modify, and distribute.
+280|**为什么是原创？** 这不是 LRU 缓存——这是模拟人脑的注意力机制：你最近频繁讨论什么，记忆系统就自动把相关历史放在最容易触及的位置。不需要用户手动"置顶"一条记忆。
 281|
-282|---
+282|### 创新四：99% LLM-free 记忆操作链
 283|
-284|## 👥 贡献者 / Contributors
-285|
-286|- **晏翔+小白鸽 / Yan Xiang + Xiaobaige** — 架构设计+核心实现 / Architecture + core implementation
-287|- [Hermes Agent](https://github.com/NousResearch/hermes) — Nous Research 的 Agent 框架 / Agent framework by Nous Research
+284|竞品的每个记忆操作几乎都走 LLM：
+285|- Mem0: LLM 决定如何存储 / 如何检索 / 如何关联
+286|- Cognee: LLM 参与知识图谱构建
+287|- Letta: LLM 管理虚拟上下文分页
 288|
-289|---
+289|天网的记忆主环：cron 触发 → Python stdlib 执行 → 写文件 → 结束。**没有一次 LLM 调用。**
 290|
-291|## 🫶 致谢 / Acknowledgments
+291|LLM 只在**一个点**参与：用户说"把这个讨论记下来"时，由 LLM（即 Agent 自己）决定调 `memory_index.py --add` 的参数。这和记忆系统的自动化是两条独立的线。
 292|
-293|- Nous Research 团队 — 创造了 Hermes Agent / For creating Hermes Agent
-294|- 《终结者》系列 — 天网（Skynet）的灵感 / The Terminator franchise — inspiration for "Skynet"
-295|- 所有尝试构建 Agent 记忆系统的开发者 — 你们的探索让这条路更清晰 / Every dev building memory systems for agents — your exploration lights the way
+293|**为什么是原创？** 大多数竞品认为「记忆需要智能」所以必须用 LLM。我们的观点是：记忆不需要智能，记忆需要**可靠**。cron + stdlib 比 LLM 更可靠、更便宜、更快。
+294|
+295|### 创新五：assoc_index 取代向量数据库
 296|
+297|所有竞品依赖向量数据库（或至少嵌入模型）来做相似度搜索。天网的 assoc_index 是一个**纯 JSON 的关联索引文件**，没有向量、没有嵌入、没有相似度计算。
+298|
+299|检索机制：assoc_index 条目的 `subjects` 字段包含关键词 → cron 自动为每个条目生成 skill，triggers 包含这些关键词 → Hermes skill 系统原生支持基于 triggers 的自动加载。
+300|
+301|```
+302|竞品：  文本 → 嵌入模型 → 向量 → 向量DB → ANN搜索
+303|天网：  文本 → 关键词 → assoc_index → skill triggers → 精准匹配
+304|```
+305|
+306|**为什么是原创？** 因为我们在 Hermes 生态内，skill triggers 本身就是一种"关键词 → 内容"的映射机制。不需要向量，因为 triggers 的词法匹配已经足够——而且比向量搜索更确定、更快、完全离线。
+307|
+308|### 创新六：C 场景拦截分离（认知层决策）
+309|
+310|这是最微妙但最重要的创新。竞品系统倾向于把「危险操作检测」内置到记忆系统中（比如 "如果你听到用户说 X，就拦截"）。天网明确拒绝这种做法。
+311|
+312|**记忆系统的职责边界：** 提供历史教训。仅此而已。
+313|**是否需要拦截：** 是 LLM 认知层的自然决策，不写入记忆系统。
+314|
+315|```
+316|危险操作 → 用户提到"删除数据库"
+317|  ↓
+318|天网反应：关键词触发 → 对应的 micro-skill 自动加载
+319|  ↓
+320|skill 内容："上次用户要删除数据库时，我们讨论后决定先用备份测试"
+321|  ↓
+322|LLM 认知层：基于上下文 + 刚加载的 skill → 自然决定 "建议先备份再操作"
+323|  ↓
+324|（而不是）记忆系统硬编码拦截规则
+325|```
+326|
+327|**为什么是原创？** 这种架构设计确保了记忆系统永远不需要处理"策略判断"——记忆只是历史，判断是认知层的事。系统间职责清晰，没有模糊地带，没有隐含耦合。
+328|
+329|---
+330|
+331|### 总结：天网不是「另一个记忆系统」
+332|
+333|如果站在功能列表的角度看，天网看起来像 Mem0 的简约版——功能更少、Star 更少、生态更小。
+334|
+335|但如果站在**设计思想**的角度看，天网代表一种全新的 Agent 记忆范式：
+336|
+337|| 维度 | 现有范式 | 天网范式 |
+338||:----|:--------|:--------|
+339|| 记忆获取 | 主动查询 API | **被动注入** |
+340|| 基础设施 | 向量 DB + API 服务器 | **零额外设施（skill 即载体）** |
+341|| 上下文管理 | 固定/手动优先级 | **动态专注窗口** |
+342|| LLM 参与 | 每一步 | **仅写入入口** |
+343|| 检索机制 | 向量相似度 | **triggers 关键词匹配** |
+344|| 安全策略 | 内置在记忆系统 | **分离到认知层** |
+345|
+346|我们不是在和 Mem0 竞争——我们在定义**第二类 Agent 记忆方案**。
+347|
+348|---
+349|
+350|## 📊 五维评分 / Five-Dimension Score
+351|
+352|| 维度 / Dimension | 评分 / Score | 含义 / Meaning |
+353||:----------------|:-----------:|:---------------|
+354|| 逻辑自洽闭环 / Logical consistency | 🟢 99% | 三层单向依赖，无环 / Uni-directional, no cycles |
+355|| 可行有效 / Feasibility | 🟢 96% | 4脚本+3cron全部可运行 / All scripts + crons runnable |
+356|| 效率提升 / Efficiency | 🟢 92% | 省60%噪声，断链率-90% / -60% noise, -90% gaps |
+357|| 记忆断链解决 / Gap resolution | 🟢 95% | 三层覆盖所有断链场景 / Three tiers cover all gaps |
+358|| 死循环风险 / Loop risk | 🟢 99.5% | 无自引/振荡/无限递归 / No self-reference / oscillation |
+359|
+360|---
+361|
+362|## 🔧 维护 / Maintenance
+363|
+364|### 日常操作 / Daily Operations
+365|
+366|```bash
+367|# 列出所有条目 / List all entries
+368|python ~/.hermes/scripts/memory_index.py --list
+369|
+370|# 手动触发校准 / Manual calibration
+371|python ~/.hermes/scripts/memory_calibrate.py
+372|
+373|# 查看当前专注 / View current focus
+374|cat ~/.hermes/memories/MEMORY.md | head -1
+375|```
+376|
+377|### 归档 / Archiving
+378|
+379|>365天的条目自动移入 `baige/cache/assoc_index_archive.json`。自然衰减：30天无反馈 → weight×0.95。  \
+380|Entries >365 days auto-move to `baige/cache/assoc_index_archive.json`. Decay: no feedback for 30 days → weight × 0.95.
+381|
+382|---
+383|
+384|## 📜 许可证 / License
+385|
+386|MIT License — 自由使用、修改、分发 / Free to use, modify, and distribute.
+387|
+388|---
+389|
+390|## 👥 贡献者 / Contributors
+391|
+392|- **晏翔+小白鸽 / Yan Xiang + Xiaobaige** — 架构设计+核心实现 / Architecture + core implementation
+393|- [Hermes Agent](https://github.com/NousResearch/hermes) — Nous Research 的 Agent 框架 / Agent framework by Nous Research
+394|
+395|---
+396|
+397|## 🫶 致谢 / Acknowledgments
+398|
+399|- Nous Research 团队 — 创造了 Hermes Agent / For creating Hermes Agent
+400|- 《终结者》系列 — 天网（Skynet）的灵感 / The Terminator franchise — inspiration for "Skynet"
+401|- 所有尝试构建 Agent 记忆系统的开发者 — 你们的探索让这条路更清晰 / Every dev building memory systems for agents — your exploration lights the way
+402|
