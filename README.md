@@ -400,3 +400,17 @@
 400|- 《终结者》系列 — 天网（Skynet）的灵感 / The Terminator franchise — inspiration for "Skynet"
 401|- 所有尝试构建 Agent 记忆系统的开发者 — 你们的探索让这条路更清晰 / Every dev building memory systems for agents — your exploration lights the way
 402|
+## 🧠 Memory Evaluation Suite (记忆评测体系)
+
+[memory-eval/](./memory-eval/) — 零LLM确定性记忆系统评测体系:
+- 自适应出题 (从记忆本身生成, 每轮聚焦薄弱)
+- 14模块评测 (检索/认知/压力全覆盖)
+- 双消费通道 (报告=优化 + 方法论=完美应用)
+- 普适 (任意记忆系统可测)
+
+```bash
+cd memory-eval
+python memory_question_gen.py --round 1
+python memory_eval.py --round 1
+python memory_methodology_gen.py --round 1
+```
