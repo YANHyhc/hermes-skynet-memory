@@ -19,8 +19,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # 通用化: 记忆根目录可配置 (env MEMORY_EVAL_HOME 优先)
-import os as _os
-_default_home = _os.environ.get("MEMORY_EVAL_HOME") or str(Path(_os.path.expanduser("~/.hermes")))
+_default_home = os.environ.get("MEMORY_EVAL_HOME") or str(Path(os.path.expanduser("~/.hermes")))
 HOME = Path(_default_home)
 EVAL_DIR = HOME / "cache/memory_eval"
 MEMORY_DIR = HOME / "skills/memory"
